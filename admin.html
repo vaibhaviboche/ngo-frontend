@@ -5,367 +5,80 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Dashboard</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f0f4f8;
-      padding: 30px 15px;
-      max-width: 900px;
-      margin: auto;
-      color: #222;
-    }
-    h1 {
-      color: #0083b0;
-      margin-bottom: 15px;
-      text-align: center;
-    }
-    #loginSection {
-      max-width: 320px;
-      margin: 50px auto;
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    #dashboard {
-      display: none;
-    }
-    #filters {
-      margin-bottom: 20px;
-      display: flex;
-      gap: 15px;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-    }
-    #filters input, #filters select {
-      padding: 8px 12px;
-      font-size: 1rem;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      width: 200px;
-    }
-    #exportCsvBtn {
-      background-color: #0083b0;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 5px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    #exportCsvBtn:hover {
-      background-color: #006c87;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 10px;
-    }
-    th, td {
-      padding: 12px 10px;
-      border: 1px solid #ddd;
-      text-align: left;
-      vertical-align: middle;
-    }
-    th {
-      background-color: #0083b0;
-      color: white;
-    }
-    button.statusBtn {
-      margin-right: 5px;
-      padding: 6px 10px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      color: white;
-    }
-    button.approve {
-      background-color: #28a745;
-    }
-    button.reject {
-      background-color: #dc3545;
-    }
-    #statusMsg {
-      margin: 10px 0;
-      font-weight: 600;
-    }
-    #paginationControls button {
-      margin: 0 3px 5px 0;
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background: white;
-      cursor: pointer;
-    }
-    #paginationControls button[disabled] {
-      background-color: #0083b0;
-      color: white;
-      cursor: default;
-      border-color: #006c87;
-    }
+    body { font-family: sans-serif; padding: 20px; }
+    h2 { margin-bottom: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 8px; border: 1px solid #ccc; text-align: left; }
+    select { margin-bottom: 20px; }
+    button { padding: 5px 10px; }
   </style>
 </head>
 <body>
+  <h2>Admin Dashboard</h2>
 
-  <h1>Admin Dashboard</h1>
+  <label for="filter">Filter by Status: </label>
+  <select id="filter">
+    <option value="All">All</option>
+    <option value="Pending">Pending</option>
+    <option value="Approved">Approved</option>
+    <option value="Rejected">Rejected</option>
+  </select>
 
-  <section id="loginSection">
-    <p>Enter Admin Password:</p>
-    <input type="password" id="adminPassword" placeholder="Admin Password" />
-    <button id="loginBtn">Login</button>
-    <p id="loginError" style="color: red; margin-top: 10px;"></p>
-  </section>
+  <button onclick="exportCSV()">Export CSV</button>
 
-  <section id="dashboard">
-    <div id="filters">
-      <input type="text" id="searchName" placeholder="Search by name" />
-      <select id="filterStatus">
-        <option value="">All Statuses</option>
-        <option value="Pending">Pending</option>
-        <option value="Approved">Approved</option>
-        <option value="Rejected">Rejected</option>
-      </select>
-      <button id="exportCsvBtn">Export CSV</button>
-    </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Email</th><th>Role</th><th>Message</th><th>Status</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="appTable"></tbody>
+  </table>
 
-    <div id="statusMsg"></div>
+  <script>
+    const API_URL = "https://ngo-backend-duzs.onrender.com"; // your backend URL
 
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Message</th>
-          <th>Status</th>
-          <th>Update Status</th>
-        </tr>
-      </thead>
-      <tbody id="applicantsTableBody"></tbody>
-    </table>
+    async function fetchApplications() {
+      const status = document.getElementById("filter").value;
+      const res = await fetch(`${API_URL}/api/applications?status=${status}`);
+      const apps = await res.json();
+      const tbody = document.getElementById("appTable");
+      tbody.innerHTML = "";
 
-    <div id="paginationControls"></div>
-  </section>
-
-<script>
-  const loginSection = document.getElementById('loginSection');
-  const dashboard = document.getElementById('dashboard');
-  const loginBtn = document.getElementById('loginBtn');
-  const adminPasswordInput = document.getElementById('adminPassword');
-  const loginError = document.getElementById('loginError');
-
-  const searchName = document.getElementById('searchName');
-  const filterStatus = document.getElementById('filterStatus');
-  const exportCsvBtn = document.getElementById('exportCsvBtn');
-  const statusMsg = document.getElementById('statusMsg');
-  const tableBody = document.getElementById('applicantsTableBody');
-  const paginationControls = document.getElementById('paginationControls');
-
-  let allUsers = [];
-  let filteredUsers = [];
-  let currentPage = 1;
-  const itemsPerPage = 5;
-  let adminPassword = '';
-
-  // Login & fetch users
-  loginBtn.addEventListener('click', () => {
-    adminPassword = adminPasswordInput.value.trim();
-    if (!adminPassword) {
-      loginError.textContent = 'Please enter the admin password.';
-      return;
-    }
-    loginError.textContent = '';
-    fetchUsers();
-  });
-
-  // Fetch users from backend
-  async function fetchUsers() {
-    statusMsg.textContent = '';
-    try {
-      const res = await fetch('http://localhost:3000/api/users', {
-        headers: { 'x-admin-password': adminPassword }
+      apps.forEach(app => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${app.name}</td>
+          <td>${app.email}</td>
+          <td>${app.role}</td>
+          <td>${app.message}</td>
+          <td>${app.status}</td>
+          <td>
+            <button onclick="updateStatus('${app._id}', 'Approved')">Approve</button>
+            <button onclick="updateStatus('${app._id}', 'Rejected')">Reject</button>
+          </td>
+        `;
+        tbody.appendChild(row);
       });
-      if (res.status === 401) {
-        loginError.textContent = 'Unauthorized: Invalid admin password';
-        return;
-      }
-      allUsers = await res.json();
-      if (!Array.isArray(allUsers) || allUsers.length === 0) {
-        statusMsg.style.color = 'red';
-        statusMsg.textContent = 'No applicants found.';
-      } else {
-        loginSection.style.display = 'none';
-        dashboard.style.display = 'block';
-        applyFiltersAndRender();
-      }
-    } catch (err) {
-      loginError.textContent = 'Error fetching applicants.';
     }
-  }
 
-  // Filter + paginate + render
-  function applyFiltersAndRender() {
-    const nameFilter = searchName.value.toLowerCase();
-    const statusFilterVal = filterStatus.value;
-
-    filteredUsers = allUsers.filter(user => {
-      const matchesName = user.name.toLowerCase().includes(nameFilter);
-      const matchesStatus = statusFilterVal ? user.status === statusFilterVal : true;
-      return matchesName && matchesStatus;
-    });
-
-    currentPage = 1;
-    renderApplicantsPage();
-  }
-
-  function renderApplicantsPage() {
-    const start = (currentPage - 1) * itemsPerPage;
-    const pageUsers = filteredUsers.slice(start, start + itemsPerPage);
-
-    renderApplicants(pageUsers);
-    renderPaginationControls();
-  }
-
-  // Render table rows
-  function renderApplicants(users) {
-    tableBody.innerHTML = '';
-    if (users.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No applicants found.</td></tr>`;
-      return;
-    }
-    users.forEach(user => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${escapeHtml(user.name)}</td>
-        <td>${escapeHtml(user.email)}</td>
-        <td>${escapeHtml(user.role)}</td>
-        <td>${escapeHtml(user.message)}</td>
-        <td>${escapeHtml(user.status)}</td>
-        <td>
-          <button class="statusBtn approve" data-id="${user._id}" data-status="Approved">Approve</button>
-          <button class="statusBtn reject" data-id="${user._id}" data-status="Rejected">Reject</button>
-        </td>
-      `;
-      tableBody.appendChild(tr);
-    });
-    // Add event listeners to status buttons
-    document.querySelectorAll('button.statusBtn').forEach(btn => {
-      btn.addEventListener('click', updateStatus);
-    });
-  }
-
-  // Escape HTML to prevent XSS
-  function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/[&<>"']/g, function(m) {
-      return ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      })[m];
-    });
-  }
-
-  // Update user status (Approve/Reject)
-  async function updateStatus(e) {
-    const btn = e.target;
-    const userId = btn.getAttribute('data-id');
-    const newStatus = btn.getAttribute('data-status');
-
-    statusMsg.style.color = 'black';
-    statusMsg.textContent = 'Updating status...';
-
-    try {
-      const res = await fetch(`http://localhost:3000/api/users/${userId}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: adminPassword, status: newStatus }),
+    async function updateStatus(id, status) {
+      await fetch(`${API_URL}/api/applications/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
       });
-
-      if (res.status === 200) {
-        statusMsg.style.color = 'green';
-        statusMsg.textContent = 'Status updated successfully.';
-        // Update locally & re-render
-        const user = allUsers.find(u => u._id === userId);
-        if (user) user.status = newStatus;
-        applyFiltersAndRender();
-      } else {
-        const text = await res.text();
-        statusMsg.style.color = 'red';
-        statusMsg.textContent = text;
-      }
-    } catch (err) {
-      statusMsg.style.color = 'red';
-      statusMsg.textContent = 'Error updating status.';
+      fetchApplications();
     }
-  }
 
-  // Pagination buttons
-  function renderPaginationControls() {
-    paginationControls.innerHTML = '';
-    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-    if (totalPages <= 1) return;
-
-    for(let i = 1; i <= totalPages; i++) {
-      const btn = document.createElement('button');
-      btn.textContent = i;
-      if (i === currentPage) btn.disabled = true;
-      btn.addEventListener('click', () => {
-        currentPage = i;
-        renderApplicantsPage();
-      });
-      paginationControls.appendChild(btn);
+    function exportCSV() {
+      window.location.href = `${API_URL}/api/export`;
     }
-  }
 
-  // Export CSV
-  exportCsvBtn.addEventListener('click', () => {
-    if (filteredUsers.length === 0) {
-      alert('No applicants to export.');
-      return;
-    }
-    const csvRows = [];
-    const headers = ['Name', 'Email', 'Role', 'Message', 'Status'];
-    csvRows.push(headers.join(','));
+    document.getElementById("filter").addEventListener("change", fetchApplications);
 
-    filteredUsers.forEach(user => {
-      const values = [
-        `"${user.name.replace(/"/g, '""')}"`,
-        `"${user.email.replace(/"/g, '""')}"`,
-        `"${user.role.replace(/"/g, '""')}"`,
-        `"${user.message.replace(/"/g, '""')}"`,
-        `"${user.status.replace(/"/g, '""')}"`
-      ];
-      csvRows.push(values.join(','));
-    });
-
-    const csvString = csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.href = url;
-    a.download = 'applicants.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  });
-
-  // Re-filter on inputs change
-  searchName.addEventListener('input', () => {
-    currentPage = 1;
-    applyFiltersAndRender();
-  });
-  filterStatus.addEventListener('change', () => {
-    currentPage = 1;
-    applyFiltersAndRender();
-  });
-</script>
+    // Initial load
+    fetchApplications();
+  </script>
 </body>
 </html>
