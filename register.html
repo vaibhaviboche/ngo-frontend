@@ -27,6 +27,9 @@
   </section>
 
   <script>
+    // ✅ Updated backend URL
+    const API_URL = "https://ngo-backend-duzs.onrender.com";
+
     const form = document.getElementById("regForm");
     const statusMsg = document.getElementById("statusMsg");
 
@@ -38,7 +41,7 @@
       const formData = Object.fromEntries(new FormData(form).entries());
 
       try {
-        const res = await fetch("http://localhost:3000/api/applications", {
+        const res = await fetch(`${API_URL}/api/applications`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
