@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Apply to Volunteer/Intern</title>
+  <style>
+    /* (Keep your existing CSS here) */
+  </style>
+</head>
+<body>
+  <section class="form-section">
+    <h2>Volunteer/Intern Application</h2>
+    <form id="regForm">
+      <input name="name" placeholder="Full Name" required />
+      <input name="email" placeholder="Email Address" type="email" required />
+      <select name="role" required>
+        <option disabled selected value="">Select Role</option>
+        <option value="Volunteer">Volunteer</option>
+        <option value="Intern">Intern</option>
+      </select>
+      <textarea name="message" placeholder="Why do you want to join?" required></textarea>
+      <button type="submit">Submit Application</button>
+      <p id="statusMsg"></p>
+    </form>
+    <a href="index.html" class="back-link">← Back to Home</a>
+  </section>
+
+  <script>
+    const form = document.getElementById("regForm");
+    const statusMsg = document.getElementById("statusMsg");
+
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      statusMsg.textContent = "";
+      statusMsg.style.color = "green";
+
+      const formData = Object.fromEntries(new FormData(form).entries());
+
+      try {
+        const res = await fetch("http://localhost:3000/api/applications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+
+        if (res.status === 201) {
+          statusMsg.style.color = "green";
+          statusMsg.textContent = "Application submitted successfully!";
+          form.reset();
+        } else {
+          const data = await res.json();
+          statusMsg.style.color = "red";
+          statusMsg.textContent = data.error || 'Submission failed';
+        }
+      } catch (error) {
+        statusMsg.style.color = "red";
+        statusMsg.textContent = "Server error. Please try again later.";
+      }
+    });
+  </script>
+</body>
+</html>
