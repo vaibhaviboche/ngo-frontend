@@ -14,7 +14,14 @@
   </style>
 </head>
 <body>
+  <script>
+    if (localStorage.getItem("isAdmin") !== "true") {
+      window.location.href = "login.html";
+    }
+  </script>
+
   <h2>Admin Dashboard</h2>
+  <button onclick="logout()" style="float: right; margin-bottom: 20px;">Logout</button>
 
   <label for="filter">Filter by Status: </label>
   <select id="filter">
@@ -36,7 +43,7 @@
   </table>
 
   <script>
-    const API_URL = "https://ngo-backend-duzs.onrender.com"; // your backend URL
+    const API_URL = "https://ngo-backend-duzs.onrender.com";
 
     async function fetchApplications() {
       const status = document.getElementById("filter").value;
@@ -76,6 +83,11 @@
     }
 
     document.getElementById("filter").addEventListener("change", fetchApplications);
+
+    function logout() {
+      localStorage.removeItem("isAdmin");
+      window.location.href = "login.html";
+    }
 
     // Initial load
     fetchApplications();
